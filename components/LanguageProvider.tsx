@@ -61,12 +61,10 @@ export function Bi({
   const { lang } = useLang();
   if (lang === "ur" && ur) {
     return (
-      // @ts-expect-error dynamic tag
       <Tag className={`urdu ${className}`} dir="rtl">
         {ur}
       </Tag>
     );
   }
-  // @ts-expect-error dynamic tag
   return <Tag className={className}>{en}</Tag>;
 }
