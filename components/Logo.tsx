@@ -1,6 +1,9 @@
-import { site } from "@/lib/site";
+"use client";
+
+import { useSite } from "./SiteProvider";
 
 export function Logo({ compact = false }: { compact?: boolean }) {
+  const site = useSite();
   return (
     <span className="flex items-center gap-2.5">
       <span className="relative grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-brand-600 to-brand-800 shadow-[0_6px_16px_-6px_rgba(14,107,76,0.9)]">

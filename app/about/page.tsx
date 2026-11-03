@@ -2,36 +2,41 @@ import type { Metadata } from "next";
 import { Button, Container, Eyebrow, SectionHeading } from "@/components/ui";
 import { CtaBand } from "@/components/CtaBand";
 import { Faq } from "@/components/Faq";
-import { site, products, buyers, stats, aboutFaqs } from "@/lib/site";
+import { getSite, getAboutContent, getProducts, getBuyers, getFaqs } from "@/lib/strapi";
 
-export const metadata: Metadata = {
-  title: "About — Karachi ka Apna Milk Supplier | Since 1982, Karachi",
-  description:
-    "Since 1982, Karachi Milk Supplier supplies khalis doodh, dahi, malai, makhan and ghee to shops, hotels and caterers across Karachi — at the day’s honest mandi rate.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const about = await getAboutContent();
+  return {
+    title: about.seo?.metaTitle || "About",
+    description: about.seo?.metaDescription,
+  };
+}
 
-const points = [
-  "Open 24/7 — din ho ya raat, order anytime on call or WhatsApp.",
-  "Mandi rate, saaf aur seedha — milk priced at today’s mandi rate (subah aur shaam), never inflated.",
-  "Flexible payment — pay online, by bank transfer, or cash on delivery.",
-  "Karachi delivery — fresh milk delivered daily to Karachi and nearby areas.",
-];
+function paragraphs(text: string): string[] {
+  return (text || "").split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+}
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const [site, about, products, buyers, faqs] = await Promise.all([
+    getSite(),
+    getAboutContent(),
+    getProducts(),
+    getBuyers(),
+    getFaqs("about"),
+  ]);
+
   return (
     <>
       {/* Hero */}
       <section className="hero-mesh">
         <Container className="py-16 lg:py-20">
           <div className="max-w-3xl reveal">
-            <Eyebrow>Our Story · Since 1982</Eyebrow>
+            <Eyebrow>{about.heroEyebrow}</Eyebrow>
             <h1 className="mt-5 font-display text-4xl font-semibold tracking-tight text-main sm:text-5xl">
-              Karachi ka Apna <span className="gold-text">Milk Supplier</span>
+              {about.heroTitle} <span className="gold-text">{about.heroTitleHighlight}</span>
             </h1>
             <p className="urdu mt-3 text-2xl text-sub" dir="rtl">{site.sloganUrdu}</p>
-            <p className="mt-6 text-lg leading-relaxed text-sub">
-              Dukandaron ka Bharosa — Karachi&apos;s trusted milk wholesaler since 1982.
-            </p>
+            <p className="mt-6 text-lg leading-relaxed text-sub">{about.intro}</p>
           </div>
         </Container>
       </section>
@@ -40,19 +45,16 @@ export default function AboutPage() {
       <Container className="py-14">
         <div className="grid gap-10 lg:grid-cols-[1.3fr_0.7fr]">
           <div className="space-y-5 text-base leading-relaxed text-sub reveal">
-            <p>
-              Since 1982, <strong className="text-main">Karachi Milk Supplier</strong> has been
-              supplying khalis doodh — fresh buffalo milk and cow milk — along with dahi, malai,
-              makhan and ghee to shops, hotels, tea stalls and caterers across Karachi. Based in New
-              Karachi, we sell at the day&apos;s honest mandi rate and pass the saving on to our
-              buyers, with no minimum order and no account required.
-            </p>
-            <p className="urdu text-lg leading-loose text-main" dir="rtl">
-              کراچی میں دودھ کا ہول سیل ہو تو دکاندار سب سے پہلے ہمارا نام لیتے ہیں۔ بھینس کا دودھ ہو
-              یا گائے کا، ریٹ وہی جو اس دن منڈی کا ہے — اسی لیے 1982 سے دکانداروں کا بھروسہ قائم ہے۔
-            </p>
+            {paragraphs(about.storyEn).map((p, i) => (
+              <p key={i}>{p}</p>
+            ))}
+            {paragraphs(about.storyUr).map((p, i) => (
+              <p key={i} className="urdu text-lg leading-loose text-main" dir="rtl">
+                {p}
+              </p>
+            ))}
             <ul className="space-y-3 pt-2">
-              {points.map((p) => (
+              {about.points.map((p) => (
                 <li key={p} className="flex items-start gap-3">
                   <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand text-xs text-white">✓</span>
                   <span>{p}</span>
@@ -63,7 +65,7 @@ export default function AboutPage() {
 
           {/* Stats */}
           <div className="grid grid-cols-2 gap-4 self-start reveal">
-            {stats.map((s) => (
+            {about.stats.map((s) => (
               <div key={s.label} className="rounded-3xl border border-line bg-surface p-6 text-center shadow-soft">
                 <div className="font-display text-3xl font-bold text-brand-700 dark:text-brand-100">{s.value}</div>
                 <div className="mt-1 text-xs font-medium text-sub">{s.label}</div>
@@ -76,12 +78,17 @@ export default function AboutPage() {
       {/* Products */}
       <section className="bg-surface-2/60 py-20">
         <Container>
-          <SectionHeading center eyebrow="Hum Kya Supply Karte Hain" title="Wholesale milk and dairy for Karachi" subtitle="Fresh every day." />
+          <SectionHeading center eyebrow={about.productsEyebrow} title={about.productsTitle} subtitle={about.productsSubtitle} />
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {products.map((p) => (
               <div key={p.name} className="reveal rounded-3xl border border-line bg-surface p-6 shadow-soft">
                 <div className="flex items-center gap-3">
-                  <span className="text-3xl">{p.icon}</span>
+                  {p.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.imageUrl} alt={p.name} className="h-10 w-10 rounded-lg object-cover" />
+                  ) : (
+                    <span className="text-3xl">{p.icon}</span>
+                  )}
                   <div>
                     <h3 className="font-display text-lg font-semibold text-main">{p.name}</h3>
                     <span className="urdu text-sm text-sub">{p.nameUrdu}</span>
@@ -96,7 +103,7 @@ export default function AboutPage() {
 
       {/* Buyers */}
       <Container className="py-20">
-        <SectionHeading eyebrow="Dukandaron ka Bharosa" title="Who buys from Karachi Milk Supplier" />
+        <SectionHeading eyebrow={about.buyersEyebrow} title={about.buyersTitle} />
         <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {buyers.map((b) => (
             <div key={b.title} className="reveal rounded-3xl border border-line bg-surface p-6 text-center shadow-soft">
@@ -111,9 +118,9 @@ export default function AboutPage() {
       {/* FAQ */}
       <section className="bg-surface-2/60 py-20">
         <Container className="max-w-3xl">
-          <SectionHeading center eyebrow="Aksar Pooche Jane Wale Sawal" title="Frequently Asked Questions" />
+          <SectionHeading center eyebrow={about.faqEyebrow} title={about.faqTitle} />
           <div className="mt-10">
-            <Faq items={aboutFaqs} />
+            <Faq items={faqs} />
           </div>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Button href={`tel:${site.phoneDigits}`} external>📞 {site.phone}</Button>

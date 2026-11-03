@@ -1,14 +1,17 @@
-import Link from "next/link";
-import { site } from "@/lib/site";
+"use client";
 
-const items = [
-  { href: "/mandi-rate", icon: "📊", label: "Rate" },
-  { href: "/mandi-bill", icon: "🧾", label: "Bill" },
-  { href: site.whatsapp, icon: "💬", label: "WhatsApp", external: true },
-  { href: `tel:${site.phoneDigits}`, icon: "📞", label: "Call", external: true },
-];
+import Link from "next/link";
+import { useSite } from "./SiteProvider";
 
 export function BottomBar() {
+  const site = useSite();
+  const items = [
+    { href: "/mandi-rate", icon: "📊", label: "Rate" },
+    { href: "/mandi-bill", icon: "🧾", label: "Bill" },
+    { href: site.whatsapp, icon: "💬", label: "WhatsApp", external: true },
+    { href: `tel:${site.phoneDigits}`, icon: "📞", label: "Call", external: true },
+  ];
+
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-[color:var(--surface)]/90 backdrop-blur-lg lg:hidden">
       <nav className="mx-auto grid max-w-md grid-cols-4">
@@ -41,6 +44,7 @@ export function BottomBar() {
 }
 
 export function WhatsAppFab() {
+  const site = useSite();
   return (
     <a
       href={site.whatsappOrder}

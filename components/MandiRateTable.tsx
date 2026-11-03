@@ -1,14 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { mandiMonths, monthAverage, latestMonthKey } from "@/lib/mandi-data";
+import { monthAverage, type MonthRates } from "@/lib/mandi";
 import { fmt } from "./ui";
 
-export function MandiRateTable() {
+export function MandiRateTable({
+  months,
+  latestMonthKey,
+}: {
+  months: MonthRates[];
+  latestMonthKey: string;
+}) {
   const [active, setActive] = useState(latestMonthKey);
   const month = useMemo(
-    () => mandiMonths.find((m) => m.key === active) ?? mandiMonths[mandiMonths.length - 1],
-    [active]
+    () => months.find((m) => m.key === active) ?? months[months.length - 1],
+    [active, months]
   );
   const avg = monthAverage(month);
 
@@ -26,7 +32,7 @@ export function MandiRateTable() {
     <div>
       {/* Month tabs */}
       <div className="flex flex-wrap gap-2">
-        {mandiMonths.map((m) => (
+        {months.map((m) => (
           <button
             key={m.key}
             onClick={() => setActive(m.key)}
@@ -123,7 +129,7 @@ export function MandiRateTable() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[color:var(--line)]">
-              {[...mandiMonths].reverse().map((m) => {
+              {[...months].reverse().map((m) => {
                 const a = monthAverage(m);
                 return (
                   <tr key={m.key} className="hover:bg-brand-50/40 dark:hover:bg-brand-800/20">

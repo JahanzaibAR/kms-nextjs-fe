@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { nav, site } from "@/lib/site";
+import { nav } from "@/lib/nav";
 import { useLang } from "./LanguageProvider";
+import { useSite } from "./SiteProvider";
 import { Logo } from "./Logo";
 
 export function Header() {
@@ -12,6 +13,7 @@ export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
   const { lang, setLang } = useLang();
+  const site = useSite();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);

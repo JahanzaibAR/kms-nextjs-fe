@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { KG_PER_MUN, rateForDate } from "@/lib/mandi-data";
-import { site } from "@/lib/site";
+import { KG_PER_MUN, rateForDate, type RateMap } from "@/lib/mandi";
+import { useSite } from "./SiteProvider";
 import { fmt } from "./ui";
 
 type Row = {
@@ -15,9 +15,6 @@ type Row = {
   comm: number;
 };
 
-function iso(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 function addDays(d: Date, n: number) {
   const x = new Date(d);
   x.setDate(x.getDate() + n);
@@ -32,9 +29,16 @@ function round(n: number) {
 
 const quickRanges = [5, 10, 15, 20, 25, 31];
 
-export function MandiBill() {
+export function MandiBill({
+  rateMap,
+  defaultStartDate,
+}: {
+  rateMap: RateMap;
+  defaultStartDate: string;
+}) {
+  const site = useSite();
   const [name, setName] = useState("");
-  const [startDate, setStartDate] = useState(iso(new Date(2026, 10, 1))); // 1 Nov 2026
+  const [startDate, setStartDate] = useState(defaultStartDate);
   const [days, setDays] = useState(5);
   const [commission, setCommission] = useState(0);
   const [rows, setRows] = useState<Row[]>([]);
@@ -50,7 +54,7 @@ export function MandiBill() {
       const next: Row[] = [];
       for (let i = 0; i < days; i++) {
         const date = addDays(base, i);
-        const r = rateForDate(date);
+        const r = rateForDate(rateMap, date);
         const old = prev[i];
         next.push(
           old
@@ -114,7 +118,7 @@ export function MandiBill() {
     setPaid(0);
     setCommission(0);
     setDays(5);
-    setStartDate(iso(new Date(2026, 10, 1)));
+    setStartDate(defaultStartDate);
     setRows([]);
   }
 
@@ -409,6 +413,7 @@ function BillSheet({
   paid: number;
   baqaya: number;
 }) {
+  const site = useSite();
   const ur = lang === "urdu";
   return (
     <div className={`rounded-2xl bg-white p-6 text-zinc-900 shadow-2xl ${ur ? "urdu text-right" : ""}`} dir={ur ? "rtl" : "ltr"}>

@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { Geist, Fraunces, Noto_Nastaliq_Urdu } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/components/LanguageProvider";
+import { SiteProvider } from "@/components/SiteProvider";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BottomBar, WhatsAppFab } from "@/components/BottomBar";
-import { site } from "@/lib/site";
+import { getSite, getCta, getHomeContent } from "@/lib/strapi";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,43 +25,52 @@ const urdu = Noto_Nastaliq_Urdu({
   weight: ["400", "500", "600", "700"],
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL("https://gujjarmilkwholesalers.com"),
-  title: {
-    default: "Karachi Milk Supplier — Khalis Doodh Wholesale Karachi | Since 1982",
-    template: "%s | Karachi Milk Supplier",
-  },
-  description: site.tagline,
-  keywords: [
-    "doodh wholesale Karachi",
-    "milk supplier Karachi",
-    "mandi rate doodh",
-    "khalis doodh",
-    "desi ghee wholesale",
-    "Karachi Milk Supplier",
-  ],
-  openGraph: {
-    title: "Karachi Milk Supplier — Khalis Doodh Wholesale Karachi",
-    description: site.tagline,
-    type: "website",
-    locale: "en_PK",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const [site, home] = await Promise.all([getSite(), getHomeContent()]);
+  const title = home.seo?.metaTitle || `${site.name} — Khalis Doodh Wholesale Karachi`;
+  const description = home.seo?.metaDescription || site.tagline;
+  return {
+    metadataBase: new URL("https://gujjarmilkwholesalers.com"),
+    title: {
+      default: title,
+      template: `%s | ${site.name}`,
+    },
+    description,
+    keywords: [
+      "doodh wholesale Karachi",
+      "milk supplier Karachi",
+      "mandi rate doodh",
+      "khalis doodh",
+      "desi ghee wholesale",
+      site.name,
+    ],
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      locale: "en_PK",
+    },
+  };
+}
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const [site, cta] = await Promise.all([getSite(), getCta()]);
+
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${fraunces.variable} ${urdu.variable} h-full antialiased`}
     >
       <body className="bg-base text-main flex min-h-full flex-col pb-16 lg:pb-0">
-        <LanguageProvider>
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
-          <BottomBar />
-          <WhatsAppFab />
-        </LanguageProvider>
+        <SiteProvider site={site} cta={cta}>
+          <LanguageProvider>
+            <Header />
+            <main className="flex-1">{children}</main>
+            <Footer />
+            <BottomBar />
+            <WhatsAppFab />
+          </LanguageProvider>
+        </SiteProvider>
       </body>
     </html>
   );

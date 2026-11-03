@@ -1,52 +1,40 @@
 import { Button, Container, Eyebrow, SectionHeading, fmt } from "@/components/ui";
 import { CtaBand } from "@/components/CtaBand";
-import { site, products, buyers } from "@/lib/site";
-import { latest } from "@/lib/mandi-data";
+import { getSite, getHomeContent, getProducts, getBuyers, getMandiRates } from "@/lib/strapi";
+import { buildMandiData } from "@/lib/mandi";
 
-const valueProps = [
-  {
-    icon: "💧",
-    title: "Taaza aur Khalis Doodh",
-    desc: "Roz subah aur shaam ka taaza bhains aur gaye ka doodh — aaj ke mandi rate par. Purana stock kabhi nahi.",
-  },
-  {
-    icon: "🚚",
-    title: "Doodh Wholesale — Har Miqdaar",
-    desc: "Ek Mun se poori gaari tak: Karachi ki doodh ki dukaanon, hotels, chai walon aur caterers ko wholesale supply.",
-  },
-  {
-    icon: "🤝",
-    title: "Karachi ka Bharosa, 1982 se",
-    desc: "Karachi ka khandani doodh ka karobar. Poora tol, saaf hisaab aur mandi rate par bill. Apna mandi bill khud banayein.",
-  },
-];
+export default async function Home() {
+  const [site, home, products, buyers, rates] = await Promise.all([
+    getSite(),
+    getHomeContent(),
+    getProducts(),
+    getBuyers(),
+    getMandiRates(),
+  ]);
+  const { latest } = buildMandiData(rates);
 
-export default function Home() {
   return (
     <>
       {/* ============ HERO ============ */}
       <section className="hero-mesh relative overflow-hidden">
         <Container className="grid items-center gap-12 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
           <div className="reveal">
-            <Eyebrow>Since 1982 · Karachi&apos;s Trusted Dairy Wholesaler</Eyebrow>
+            <Eyebrow>{home.heroEyebrow}</Eyebrow>
             <h1 className="mt-5 font-display text-4xl font-semibold leading-[1.08] tracking-tight text-main sm:text-5xl lg:text-6xl">
-              Fresh Milk & Dairy,{" "}
-              <span className="gold-text">Straight to Your Business</span>
+              {home.heroTitle}{" "}
+              <span className="gold-text">{home.heroTitleHighlight}</span>
             </h1>
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-sub">
-              Khalis doodh wholesale, seedha aap ki dukaan tak.{" "}
-              <strong className="text-main">Karachi Milk Supplier</strong> — Karachi mein 1982 se
-              khalis bhains aur gaye ka taaza doodh, desi ghee aur makhan wholesale. Roz ke mandi
-              rate par, poora tol, har miqdaar mein — order WhatsApp par, 24 ghante.
-            </p>
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-sub">{home.heroParagraph}</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button href="#products">Explore Products →</Button>
               <Button href="/mandi-bill" variant="outline">🧾 Mandi Bill</Button>
             </div>
             <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4 text-sm text-sub">
-              <span className="flex items-center gap-2"><span className="text-brand-500">✓</span> Open 24/7</span>
-              <span className="flex items-center gap-2"><span className="text-brand-500">✓</span> Mandi rate, saaf aur seedha</span>
-              <span className="flex items-center gap-2"><span className="text-brand-500">✓</span> Karachi bhar delivery</span>
+              {home.heroPoints.map((p) => (
+                <span key={p} className="flex items-center gap-2">
+                  <span className="text-brand-500">✓</span> {p}
+                </span>
+              ))}
             </div>
           </div>
 
@@ -80,11 +68,11 @@ export default function Home() {
               {/* floating badge */}
               <div className="float-slow absolute left-4 top-6 rounded-2xl border border-line bg-[color:var(--surface)] px-4 py-2.5 shadow-soft">
                 <div className="text-[0.6rem] font-semibold uppercase tracking-widest text-gold-600">Since</div>
-                <div className="font-display text-2xl font-bold text-brand-700">1982</div>
+                <div className="font-display text-2xl font-bold text-brand-700">{site.since}</div>
               </div>
               <div className="float-slow absolute bottom-6 right-4 rounded-2xl border border-line bg-[color:var(--surface)] px-4 py-2.5 shadow-soft" style={{ animationDelay: "1.5s" }}>
                 <div className="text-[0.6rem] font-semibold uppercase tracking-widest text-gold-600">Headquarters</div>
-                <div className="text-sm font-semibold text-main">Karachi, Pakistan</div>
+                <div className="text-sm font-semibold text-main">{site.city}</div>
               </div>
             </div>
           </div>
@@ -119,7 +107,7 @@ export default function Home() {
       {/* ============ VALUE PROPS ============ */}
       <Container className="py-16">
         <div className="grid gap-6 md:grid-cols-3">
-          {valueProps.map((v) => (
+          {home.valueProps.map((v) => (
             <div key={v.title} className="reveal group rounded-3xl border border-line bg-surface p-7 shadow-soft transition-shadow hover:shadow-card">
               <div className="grid h-14 w-14 place-items-center rounded-2xl bg-brand-50 text-3xl transition-transform group-hover:scale-110 dark:bg-brand-800/40">
                 {v.icon}
@@ -136,15 +124,20 @@ export default function Home() {
         <Container>
           <SectionHeading
             center
-            eyebrow="Hum Kya Supply Karte Hain"
-            title="Wholesale Milk & Dairy for Karachi"
-            subtitle="Fresh every day — bhains aur gaye ka doodh, dahi, malai, makhan aur desi ghee, roz ke mandi rate par."
+            eyebrow={home.productsEyebrow}
+            title={home.productsTitle}
+            subtitle={home.productsSubtitle}
           />
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {products.map((p) => (
               <div key={p.name} className="reveal group flex items-start gap-4 rounded-3xl border border-line bg-surface p-6 shadow-soft transition-all hover:-translate-y-1 hover:shadow-card">
-                <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-brand-50 to-gold-100/60 text-3xl dark:from-brand-800/40 dark:to-gold-700/10">
-                  {p.icon}
+                <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl bg-gradient-to-br from-brand-50 to-gold-100/60 text-3xl dark:from-brand-800/40 dark:to-gold-700/10">
+                  {p.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.imageUrl} alt={p.name} className="h-full w-full object-cover" />
+                  ) : (
+                    p.icon
+                  )}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -167,8 +160,8 @@ export default function Home() {
       {/* ============ BUYERS ============ */}
       <Container className="py-20">
         <SectionHeading
-          eyebrow="Dukandaron ka Bharosa"
-          title="Who buys from Karachi Milk Supplier"
+          eyebrow={home.buyersEyebrow}
+          title={home.buyersTitle}
         />
         <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {buyers.map((b) => (
