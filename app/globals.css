@@ -1,26 +1,197 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ============================================================
+   Gujjar Milk Wholesalers — Fresh Emerald + Gold design system
+   ============================================================ */
+
+@theme {
+  /* Brand — deep farm emerald */
+  --color-brand-50: #eafaf3;
+  --color-brand-100: #d0f3e3;
+  --color-brand-200: #a3e7c9;
+  --color-brand-300: #6dd5a9;
+  --color-brand-400: #34b885;
+  --color-brand-500: #159e6d;
+  --color-brand-600: #0f7f58;
+  --color-brand: #0e6b4c;
+  --color-brand-700: #0e6b4c;
+  --color-brand-800: #0b5139;
+  --color-brand-900: #093f2d;
+  --color-brand-950: #04251a;
+
+  /* Heritage gold */
+  --color-gold-100: #faf0cf;
+  --color-gold-200: #f3dd98;
+  --color-gold-300: #e9c766;
+  --color-gold-400: #d9ab36;
+  --color-gold: #c9971f;
+  --color-gold-600: #a97c17;
+  --color-gold-700: #845e13;
+
+  /* Warm neutrals */
+  --color-cream: #fbf8f0;
+  --color-cream-200: #f3ecdd;
+  --color-ink: #122018;
+  --color-ink-soft: #3a4942;
+  --color-muted: #6a7a71;
+
+  /* Fonts (wired via next/font variables in layout) */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-urdu: var(--font-urdu-nastaliq), "Noto Nastaliq Urdu", serif;
+
+  /* Shadows */
+  --shadow-soft: 0 1px 2px rgba(10, 60, 42, 0.06), 0 8px 30px rgba(10, 60, 42, 0.08);
+  --shadow-card: 0 2px 8px rgba(10, 60, 42, 0.06), 0 18px 40px -20px rgba(10, 60, 42, 0.25);
+  --shadow-gold: 0 10px 30px -10px rgba(201, 151, 31, 0.5);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  --bg: #fbf8f0;
+  --surface: #ffffff;
+  --surface-2: #f6f1e6;
+  --text: #122018;
+  --text-soft: #4a5a51;
+  --line: rgba(14, 107, 76, 0.12);
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]) {
+    --bg: #071a12;
+    --surface: #0c2419;
+    --surface-2: #0f2e20;
+    --text: #e9f7ef;
+    --text-soft: #a9c4b7;
+    --line: rgba(120, 200, 165, 0.16);
+    color-scheme: dark;
   }
 }
 
+:root[data-theme="dark"] {
+  --bg: #071a12;
+  --surface: #0c2419;
+  --surface-2: #0f2e20;
+  --text: #e9f7ef;
+  --text-soft: #a9c4b7;
+  --line: rgba(120, 200, 165, 0.16);
+  color-scheme: dark;
+}
+
+* {
+  border-color: var(--line);
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Urdu script */
+.urdu {
+  font-family: var(--font-urdu);
+  direction: rtl;
+  line-height: 2.2;
+}
+
+/* Utility bridges to CSS vars */
+@layer utilities {
+  .bg-base { background: var(--bg); }
+  .bg-surface { background: var(--surface); }
+  .bg-surface-2 { background: var(--surface-2); }
+  .text-main { color: var(--text); }
+  .text-sub { color: var(--text-soft); }
+  .border-line { border-color: var(--line); }
+  .font-display { font-family: var(--font-display); }
+  .font-urdu { font-family: var(--font-urdu); }
+}
+
+/* Hero mesh / decorative gradients */
+.hero-mesh {
+  background:
+    radial-gradient(1100px 500px at 15% -10%, rgba(21, 158, 109, 0.18), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(201, 151, 31, 0.16), transparent 55%);
+}
+
+.gold-text {
+  background: linear-gradient(100deg, #e9c766, #c9971f 55%, #a97c17);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Thin, elegant scrollbar for data tables */
+.scroll-slim::-webkit-scrollbar { height: 8px; width: 8px; }
+.scroll-slim::-webkit-scrollbar-thumb {
+  background: var(--color-brand-300);
+  border-radius: 999px;
+}
+
+/* Reveal-on-scroll (progressive enhancement; visible by default) */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    animation: reveal-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation-timeline: view();
+    animation-range: entry 0% cover 28%;
+  }
+}
+
+@keyframes reveal-in {
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-14px) rotate(1.5deg); }
+}
+.float-slow { animation: float-slow 7s ease-in-out infinite; }
+
+@keyframes shimmer {
+  100% { background-position: 200% 0; }
+}
+
+/* Mandi Bill form controls */
+.bill-input {
+  width: 100%;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: 0 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text);
+  outline: none;
+}
+.bill-input:focus {
+  border-color: var(--color-brand-400);
+  box-shadow: 0 0 0 3px rgba(21, 158, 109, 0.15);
+}
+.bill-stepper {
+  height: 2.75rem;
+  width: 2.75rem;
+  flex-shrink: 0;
+  border-radius: 0.75rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-brand-700);
+}
+
+/* Print: used by the Mandi Bill tool */
+@media print {
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; }
+  .print-area { position: absolute; inset: 0; width: 100%; }
+  .no-print { display: none !important; }
 }

@@ -1,69 +1,196 @@
-import Image from "next/image";
+import { Button, Container, Eyebrow, SectionHeading, fmt } from "@/components/ui";
+import { CtaBand } from "@/components/CtaBand";
+import { site, products, buyers } from "@/lib/site";
+import { latest } from "@/lib/mandi-data";
+
+const valueProps = [
+  {
+    icon: "💧",
+    title: "Taaza aur Khalis Doodh",
+    desc: "Roz subah aur shaam ka taaza bhains aur gaye ka doodh — aaj ke mandi rate par. Purana stock kabhi nahi.",
+  },
+  {
+    icon: "🚚",
+    title: "Doodh Wholesale — Har Miqdaar",
+    desc: "Ek Mun se poori gaari tak: Karachi ki doodh ki dukaanon, hotels, chai walon aur caterers ko wholesale supply.",
+  },
+  {
+    icon: "🤝",
+    title: "Karachi ka Bharosa, 1982 se",
+    desc: "Karachi ka khandani doodh ka karobar. Poora tol, saaf hisaab aur mandi rate par bill. Apna mandi bill khud banayein.",
+  },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <>
+      {/* ============ HERO ============ */}
+      <section className="hero-mesh relative overflow-hidden">
+        <Container className="grid items-center gap-12 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
+          <div className="reveal">
+            <Eyebrow>Since 1982 · Karachi&apos;s Trusted Dairy Wholesaler</Eyebrow>
+            <h1 className="mt-5 font-display text-4xl font-semibold leading-[1.08] tracking-tight text-main sm:text-5xl lg:text-6xl">
+              Fresh Milk & Dairy,{" "}
+              <span className="gold-text">Straight to Your Business</span>
+            </h1>
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-sub">
+              Khalis doodh wholesale, seedha aap ki dukaan tak.{" "}
+              <strong className="text-main">Karachi Milk Supplier</strong> — Karachi mein 1982 se
+              khalis bhains aur gaye ka taaza doodh, desi ghee aur makhan wholesale. Roz ke mandi
+              rate par, poora tol, har miqdaar mein — order WhatsApp par, 24 ghante.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Button href="#products">Explore Products →</Button>
+              <Button href="/mandi-bill" variant="outline">🧾 Mandi Bill</Button>
+            </div>
+            <div className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4 text-sm text-sub">
+              <span className="flex items-center gap-2"><span className="text-brand-500">✓</span> Open 24/7</span>
+              <span className="flex items-center gap-2"><span className="text-brand-500">✓</span> Mandi rate, saaf aur seedha</span>
+              <span className="flex items-center gap-2"><span className="text-brand-500">✓</span> Karachi bhar delivery</span>
+            </div>
+          </div>
+
+          {/* Hero visual */}
+          <div className="relative mx-auto aspect-square w-full max-w-md reveal">
+            <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-br from-brand-500/15 to-gold/15 blur-2xl" />
+            <div className="relative grid h-full place-items-center rounded-[2.5rem] border border-line bg-gradient-to-br from-[color:var(--surface)] to-[color:var(--surface-2)] shadow-card">
+              {/* glass of milk */}
+              <svg viewBox="0 0 220 240" className="h-[78%] w-[78%] drop-shadow-xl">
+                <defs>
+                  <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stopColor="#ffffff" stopOpacity="0.95" />
+                    <stop offset="1" stopColor="#f3ecdd" stopOpacity="0.9" />
+                  </linearGradient>
+                  <linearGradient id="milk" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stopColor="#ffffff" />
+                    <stop offset="1" stopColor="#f6efe0" />
+                  </linearGradient>
+                </defs>
+                {/* splash crown */}
+                <path d="M55 70 Q70 30 90 58 Q105 20 120 55 Q138 25 150 60 Q168 40 165 72 L55 72 Z" fill="url(#milk)" opacity="0.85" />
+                <circle cx="150" cy="34" r="7" fill="#fff" />
+                <circle cx="70" cy="40" r="5" fill="#fff" />
+                {/* glass */}
+                <path d="M56 70 L164 70 L150 214 Q149 224 139 224 L81 224 Q71 224 70 214 Z" fill="url(#glass)" stroke="var(--color-brand-200)" strokeWidth="2" />
+                <path d="M60 74 L160 74 L148 150 L72 150 Z" fill="url(#milk)" />
+                <ellipse cx="110" cy="74" rx="52" ry="8" fill="#fff" />
+                <rect x="76" y="92" width="10" height="46" rx="5" fill="#fff" opacity="0.6" />
+              </svg>
+
+              {/* floating badge */}
+              <div className="float-slow absolute left-4 top-6 rounded-2xl border border-line bg-[color:var(--surface)] px-4 py-2.5 shadow-soft">
+                <div className="text-[0.6rem] font-semibold uppercase tracking-widest text-gold-600">Since</div>
+                <div className="font-display text-2xl font-bold text-brand-700">1982</div>
+              </div>
+              <div className="float-slow absolute bottom-6 right-4 rounded-2xl border border-line bg-[color:var(--surface)] px-4 py-2.5 shadow-soft" style={{ animationDelay: "1.5s" }}>
+                <div className="text-[0.6rem] font-semibold uppercase tracking-widest text-gold-600">Headquarters</div>
+                <div className="text-sm font-semibold text-main">Karachi, Pakistan</div>
+              </div>
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      {/* ============ MANDI RATE BAND ============ */}
+      <Container>
+        <div className="reveal -mt-2 overflow-hidden rounded-3xl border border-line bg-surface shadow-card">
+          <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+            <div>
+              <div className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-gold-600">
+                {latest.source}
+              </div>
+              <div className="mt-1 flex items-baseline gap-3">
+                <h2 className="font-display text-2xl font-semibold text-main">Today&apos;s Mandi Rate</h2>
+                <span className="text-sm text-sub">{latest.label}</span>
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <RatePill label="Subah / Mun" value={latest.subah} />
+              <RatePill label="Shaam / Mun" value={latest.shaam} />
+            </div>
+            <div className="flex gap-3">
+              <Button href="/mandi-rate" variant="primary">Full rate & history →</Button>
+              <Button href="/mandi-bill" variant="outline">Make a bill</Button>
+            </div>
+          </div>
+        </div>
+      </Container>
+
+      {/* ============ VALUE PROPS ============ */}
+      <Container className="py-16">
+        <div className="grid gap-6 md:grid-cols-3">
+          {valueProps.map((v) => (
+            <div key={v.title} className="reveal group rounded-3xl border border-line bg-surface p-7 shadow-soft transition-shadow hover:shadow-card">
+              <div className="grid h-14 w-14 place-items-center rounded-2xl bg-brand-50 text-3xl transition-transform group-hover:scale-110 dark:bg-brand-800/40">
+                {v.icon}
+              </div>
+              <h3 className="mt-5 font-display text-xl font-semibold text-main">{v.title}</h3>
+              <p className="mt-2.5 text-sm leading-relaxed text-sub">{v.desc}</p>
+            </div>
+          ))}
+        </div>
+      </Container>
+
+      {/* ============ PRODUCTS ============ */}
+      <section id="products" className="scroll-mt-24 bg-surface-2/60 py-20">
+        <Container>
+          <SectionHeading
+            center
+            eyebrow="Hum Kya Supply Karte Hain"
+            title="Wholesale Milk & Dairy for Karachi"
+            subtitle="Fresh every day — bhains aur gaye ka doodh, dahi, malai, makhan aur desi ghee, roz ke mandi rate par."
+          />
+          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {products.map((p) => (
+              <div key={p.name} className="reveal group flex items-start gap-4 rounded-3xl border border-line bg-surface p-6 shadow-soft transition-all hover:-translate-y-1 hover:shadow-card">
+                <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-brand-50 to-gold-100/60 text-3xl dark:from-brand-800/40 dark:to-gold-700/10">
+                  {p.icon}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display text-lg font-semibold text-main">{p.name}</h3>
+                    <span className="urdu text-sm text-sub">{p.nameUrdu}</span>
+                  </div>
+                  <p className="mt-1 text-sm leading-relaxed text-sub">{p.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-10 text-center">
+            <Button href={site.whatsappOrder} external variant="gold">
+              💬 Rate & Order — WhatsApp
+            </Button>
+          </div>
+        </Container>
+      </section>
+
+      {/* ============ BUYERS ============ */}
+      <Container className="py-20">
+        <SectionHeading
+          eyebrow="Dukandaron ka Bharosa"
+          title="Who buys from Karachi Milk Supplier"
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {buyers.map((b) => (
+            <div key={b.title} className="reveal rounded-3xl border border-line bg-surface p-6 text-center shadow-soft">
+              <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-brand-50 text-2xl dark:bg-brand-800/40">{b.icon}</div>
+              <h3 className="mt-4 font-semibold text-main">{b.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-sub">{b.desc}</p>
+            </div>
+          ))}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </Container>
+
+      <CtaBand />
+    </>
+  );
+}
+
+function RatePill({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-2xl bg-brand-50 px-5 py-3 text-center dark:bg-brand-800/40">
+      <div className="text-[0.65rem] font-semibold uppercase tracking-wider text-gold-600">{label}</div>
+      <div className="font-display text-2xl font-bold text-brand-700 dark:text-brand-100">Rs {fmt(value)}</div>
     </div>
   );
 }
