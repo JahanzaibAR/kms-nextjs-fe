@@ -11,7 +11,10 @@ async function strapiFetch<T>(path: string): Promise<T> {
   cacheLife("hours");
   cacheTag("strapi");
 
-  const res = await fetch(`${STRAPI_URL}/api/${path}`);
+  const token = process.env.STRAPI_API_TOKEN;
+  const res = await fetch(`${STRAPI_URL}/api/${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
   if (!res.ok) {
     throw new Error(`Strapi fetch failed: ${path} -> ${res.status}`);
   }

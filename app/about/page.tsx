@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { Button, Container, Eyebrow, SectionHeading } from "@/components/ui";
 import { CtaBand } from "@/components/CtaBand";
 import { Faq } from "@/components/Faq";
@@ -84,8 +85,7 @@ export default async function AboutPage() {
               <div key={p.name} className="reveal rounded-3xl border border-line bg-surface p-6 shadow-soft">
                 <div className="flex items-center gap-3">
                   {p.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.imageUrl} alt={p.name} className="h-10 w-10 rounded-lg object-cover" />
+                    <Image src={p.imageUrl} alt={p.name} width={40} height={40} className="h-10 w-10 rounded-lg object-cover" />
                   ) : (
                     <span className="text-3xl">{p.icon}</span>
                   )}

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Button, Container, Eyebrow, SectionHeading, fmt } from "@/components/ui";
 import { CtaBand } from "@/components/CtaBand";
 import { getSite, getHomeContent, getProducts, getBuyers, getMandiRates } from "@/lib/strapi";
@@ -133,8 +134,7 @@ export default async function Home() {
               <div key={p.name} className="reveal group flex items-start gap-4 rounded-3xl border border-line bg-surface p-6 shadow-soft transition-all hover:-translate-y-1 hover:shadow-card">
                 <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl bg-gradient-to-br from-brand-50 to-gold-100/60 text-3xl dark:from-brand-800/40 dark:to-gold-700/10">
                   {p.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.imageUrl} alt={p.name} className="h-full w-full object-cover" />
+                    <Image src={p.imageUrl} alt={p.name} width={64} height={64} className="h-full w-full object-cover" />
                   ) : (
                     p.icon
                   )}
