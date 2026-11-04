@@ -3,9 +3,9 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.karachimilksupplier.twa",
+      "package_name": "app.vercel.kms_nextjs_fe.twa",
       "sha256_cert_fingerprints": [
-        "REPLACE_WITH_YOUR_APP_SIGNING_SHA256_FINGERPRINT"
+        "0A:76:8B:6C:2E:DF:85:37:AB:A6:60:67:2D:68:CB:52:3B:5C:2B:1B:FA:86:A8:85:45:02:D1:17:C3:71:C7:79"
       ]
     }
   }
