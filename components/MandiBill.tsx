@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { KG_PER_MUN, rateForDate, type RateMap } from "@/lib/mandi";
 import { useSite } from "./SiteProvider";
 import { fmt } from "./ui";
@@ -46,6 +46,8 @@ export function MandiBill({
   const [paid, setPaid] = useState(0);
   const [showBill, setShowBill] = useState(false);
   const [billLang, setBillLang] = useState<"roman" | "urdu">("roman");
+  const [sharing, setSharing] = useState(false);
+  const billRef = useRef<HTMLDivElement>(null);
 
   // Build / resize rows whenever date or day-count changes, preserving existing entries by index.
   useEffect(() => {
@@ -147,9 +149,50 @@ export function MandiBill({
     return lines.join("\n");
   }
 
-  function sendWhatsApp() {
+  function sendWhatsAppText() {
     const text = encodeURIComponent(buildBillText());
     window.open(`https://wa.me/?text=${text}`, "_blank");
+  }
+
+  // Capture the bill sheet as a PNG and share it (native share sheet -> WhatsApp etc.).
+  async function sendWhatsAppImage() {
+    const node = billRef.current;
+    if (!node) return;
+    setSharing(true);
+    try {
+      const html2canvas = (await import("html2canvas-pro")).default;
+      const canvas = await html2canvas(node, {
+        backgroundColor: "#ffffff",
+        scale: Math.min(3, (window.devicePixelRatio || 1) * 2),
+      });
+      const blob: Blob | null = await new Promise((res) => canvas.toBlob(res, "image/png"));
+      if (!blob) throw new Error("no blob");
+      const file = new File([blob], `mandi-bill${name ? "-" + name.replace(/\s+/g, "-") : ""}.png`, {
+        type: "image/png",
+      });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `${site.name} — Bill`,
+          text: name ? `${name} ka doodh ka bill` : "Doodh ka mandi bill",
+        });
+      } else {
+        // Desktop / unsupported: download the image, then open WhatsApp with the text summary.
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file.name;
+        a.click();
+        URL.revokeObjectURL(url);
+        sendWhatsAppText();
+      }
+    } catch {
+      // Any failure -> fall back to the text bill so the user is never stuck.
+      sendWhatsAppText();
+    } finally {
+      setSharing(false);
+    }
   }
 
   return (
@@ -282,7 +325,7 @@ export function MandiBill({
         <button onClick={() => setShowBill(true)} className="rounded-full bg-gradient-to-br from-brand-500 to-brand-700 px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_28px_-10px_rgba(14,107,76,0.9)]">
           Bill Dekhein / بل دیکھیں
         </button>
-        <button onClick={sendWhatsApp} className="rounded-full bg-[#25D366] px-5 py-3 text-sm font-semibold text-white">
+        <button onClick={() => setShowBill(true)} className="rounded-full bg-[#25D366] px-5 py-3 text-sm font-semibold text-white">
           💬 WhatsApp Bhejein
         </button>
         <button onClick={() => window.print()} className="rounded-full border border-line bg-surface px-5 py-3 text-sm font-semibold text-main hover:border-brand">
@@ -304,21 +347,41 @@ export function MandiBill({
               </div>
               <button onClick={() => setShowBill(false)} className="grid h-9 w-9 place-items-center rounded-full bg-white/90 text-brand-900">✕</button>
             </div>
-            <BillSheet
-              lang={billLang}
-              name={name}
-              dates={dates}
-              rows={rows}
-              perRow={calc.perRow}
-              totals={calc}
-              prevBalance={prevBalance}
-              paid={paid}
-              baqaya={baqaya}
-            />
-            <div className="mt-3 flex gap-3">
-              <button onClick={() => window.print()} className="flex-1 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white">🖨 Print / پرنٹ</button>
-              <button onClick={sendWhatsApp} className="flex-1 rounded-full bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white">WhatsApp Bhejein</button>
+            <div ref={billRef}>
+              <BillSheet
+                lang={billLang}
+                name={name}
+                dates={dates}
+                rows={rows}
+                perRow={calc.perRow}
+                totals={calc}
+                prevBalance={prevBalance}
+                paid={paid}
+                baqaya={baqaya}
+              />
             </div>
+            <p className="mt-3 text-center text-xs font-medium text-white/80">WhatsApp par kaise bhejein?</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button
+                onClick={sendWhatsAppImage}
+                disabled={sharing}
+                className="rounded-full bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {sharing ? "..." : "📷 Image bhejein"}
+              </button>
+              <button
+                onClick={sendWhatsAppText}
+                className="rounded-full border border-white/40 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                💬 Text bhejein
+              </button>
+            </div>
+            <button
+              onClick={() => window.print()}
+              className="mt-2 w-full rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white"
+            >
+              🖨 Print / PDF
+            </button>
           </div>
         </div>
       )}
