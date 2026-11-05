@@ -6,6 +6,7 @@ import { rateForDate, type RateMap } from "@/lib/mandi";
 import { useSite } from "./SiteProvider";
 import { useAuth } from "./AuthProvider";
 import { BillSheet, computeBill, type BillRow } from "./BillSheet";
+import { SavedCustomers } from "./SavedCustomers";
 import { createBill, createCustomer } from "@/lib/account-client";
 import { fmt } from "./ui";
 
@@ -80,6 +81,7 @@ export function MandiBill({
   const [limitMsg, setLimitMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  const [savedKey, setSavedKey] = useState(0);
   const billRef = useRef<HTMLDivElement>(null);
 
   const days = Math.max(1, diffDays(startDate, endDate) + 1);
@@ -220,6 +222,8 @@ export function MandiBill({
         entries: rows.map((r, i) => ({ date: toISO(dates[i]), ...r })),
       });
       setSavedMsg(`✓ ${custName} ka bill save ho gaya`);
+      setSavedKey((k) => k + 1); // refresh the saved-customers list
+      resetBill(); // entries save ho gayin — form reset
     } catch (e) {
       setSavedMsg(e instanceof Error ? e.message : "Save nahi hua");
     } finally {
@@ -499,14 +503,14 @@ export function MandiBill({
           <button
             onClick={saveBill}
             disabled={saving}
-            className="rounded-full bg-gradient-to-br from-gold-400 to-gold px-5 py-3 text-sm font-semibold text-brand-950 shadow-[0_12px_28px_-10px_rgba(201,151,31,0.8)] disabled:opacity-60"
+            className="rounded-full bg-gradient-to-br from-gold-300 to-gold px-6 py-3 text-sm font-bold text-brand-950 shadow-[0_12px_28px_-10px_rgba(201,151,31,0.9)] disabled:opacity-60"
           >
-            {saving ? "..." : "💾 Save"}
+            {saving ? "Save ho raha hai..." : "💾 Save Karein"}
           </button>
         ) : (
           <Link
             href="/account"
-            className="rounded-full border border-dashed border-gold-400 bg-gold-100/40 px-5 py-3 text-sm font-semibold text-gold-700 hover:border-gold"
+            className="rounded-full bg-gradient-to-br from-gold-300 to-gold px-6 py-3 text-sm font-bold text-brand-950 shadow-[0_12px_28px_-10px_rgba(201,151,31,0.9)]"
           >
             🔐 Login kar ke save karein
           </Link>
@@ -519,10 +523,26 @@ export function MandiBill({
         </button>
       </div>
 
+      {/* ===== Saved customers (collapsible) — only when logged in ===== */}
+      <SavedCustomers
+        onPick={(nm) => {
+          setName(nm);
+          try {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          } catch {
+            /* ignore */
+          }
+        }}
+        refreshKey={savedKey}
+      />
+
       {/* ===== Future-date / rate-limit popup ===== */}
       {limitMsg && (
         <div className="fixed inset-x-0 bottom-24 z-[70] flex justify-center px-4 no-print">
-          <div className="urdu rounded-2xl bg-ink px-6 py-4 text-center text-lg text-cream shadow-card" dir="rtl">
+          <div
+            className="urdu rounded-2xl border border-gold-600 bg-gradient-to-br from-gold-300 to-gold px-6 py-4 text-center text-lg font-bold text-brand-950 shadow-[0_18px_45px_-10px_rgba(0,0,0,0.55)]"
+            dir="rtl"
+          >
             {limitMsg}
           </div>
         </div>

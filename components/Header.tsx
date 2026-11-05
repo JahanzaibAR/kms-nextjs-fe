@@ -15,7 +15,7 @@ export function Header() {
   const pathname = usePathname();
   const { lang, setLang } = useLang();
   const site = useSite();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -150,6 +150,23 @@ export function Header() {
           >
             WhatsApp Order
           </a>
+
+          <Link
+            href="/account"
+            className="mt-1 flex items-center justify-between rounded-xl px-4 py-3 text-base font-medium hover:bg-brand-50 dark:hover:bg-brand-800/30"
+          >
+            <span>{user ? "Mere Bills" : "Login / Account"}</span>
+            <span className="urdu text-sub">{user ? "میرے بل" : "لاگ اِن"}</span>
+          </Link>
+          {user && (
+            <button
+              onClick={() => logout()}
+              className="flex items-center justify-between rounded-xl px-4 py-3 text-left text-base font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+            >
+              <span>Logout</span>
+              <span className="urdu">لاگ آؤٹ</span>
+            </button>
+          )}
         </nav>
       </div>
     </header>

@@ -10,6 +10,7 @@ export type Customer = {
   id: number;
   documentId: string;
   name: string;
+  code?: string;
   billCount?: number;
 };
 

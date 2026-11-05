@@ -46,13 +46,6 @@ export function logout() {
   setAuth(null);
 }
 
-// Phone is used as the login identifier (username). Email is synthesised so the
-// plugin's "email required/unique" rule is satisfied — it is never used for mail.
-function phoneToEmail(phone: string) {
-  const clean = phone.replace(/[^0-9a-zA-Z]/g, "") || "user";
-  return `${clean}@kms.local`;
-}
-
 async function parseError(res: Response): Promise<string> {
   try {
     const body = await res.json();
@@ -70,12 +63,12 @@ async function parseError(res: Response): Promise<string> {
 
 export async function register(input: { name: string; phone: string; password: string }): Promise<AuthState> {
   const phone = input.phone.trim();
-  const res = await fetch(`${STRAPI_URL}/api/auth/local/register`, {
+  const res = await fetch(`${STRAPI_URL}/api/account/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       username: phone,
-      email: phoneToEmail(phone),
+      name: input.name.trim(),
       password: input.password,
     }),
   });
@@ -83,7 +76,7 @@ export async function register(input: { name: string; phone: string; password: s
   const data = await res.json();
   const state: AuthState = {
     jwt: data.jwt,
-    user: { ...data.user, name: input.name.trim() || phone },
+    user: { ...data.user, name: data.user?.name || input.name.trim() || phone },
   };
   setAuth(state);
   return state;
@@ -98,10 +91,9 @@ export async function login(input: { phone: string; password: string }): Promise
   });
   if (!res.ok) throw new Error(await parseError(res));
   const data = await res.json();
-  const existing = getAuth();
   const state: AuthState = {
     jwt: data.jwt,
-    user: { ...data.user, name: existing?.user?.name || data.user?.username || phone },
+    user: { ...data.user, name: data.user?.name || data.user?.username || phone },
   };
   setAuth(state);
   return state;
