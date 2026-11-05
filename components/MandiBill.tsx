@@ -7,7 +7,7 @@ import { useSite } from "./SiteProvider";
 import { useAuth } from "./AuthProvider";
 import { BillSheet, computeBill, type BillRow } from "./BillSheet";
 import { SavedCustomers } from "./SavedCustomers";
-import { createBill, createCustomer } from "@/lib/account-client";
+import { createBill, createCustomer, getBill, updateBill, type Bill } from "@/lib/account-client";
 import { fmt } from "./ui";
 
 type Row = BillRow;
@@ -82,18 +82,53 @@ export function MandiBill({
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
   const [savedKey, setSavedKey] = useState(0);
+  const [editingBillId, setEditingBillId] = useState<string | null>(null);
   const billRef = useRef<HTMLDivElement>(null);
 
-  const days = Math.max(1, diffDays(startDate, endDate) + 1);
-
-  // Prefill the customer name from ?customer= (used by "Naya Bill" on the account page).
-  useEffect(() => {
+  // Load an existing saved bill back into the form for editing.
+  function loadBillIntoForm(b: Bill) {
+    setEditingBillId(b.documentId);
+    setName(b.billName || "");
+    setCommission(b.commission || 0);
+    setPrevBalance(b.prevBalance || 0);
+    setPaid(b.paid || 0);
+    const es = b.entries || [];
+    if (es.length) {
+      setStartDate(es[0].date);
+      setEndDate(es[es.length - 1].date);
+      setRows(
+        es.map((e) => ({
+          subahMun: e.subahMun,
+          subahKg: e.subahKg,
+          shaamMun: e.shaamMun,
+          shaamKg: e.shaamKg,
+          subahRate: e.subahRate,
+          shaamRate: e.shaamRate,
+          comm: e.comm,
+        }))
+      );
+    }
     try {
-      const c = new URLSearchParams(window.location.search).get("customer");
-      if (c) setName(c);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch {
       /* ignore */
     }
+  }
+
+  const days = Math.max(1, diffDays(startDate, endDate) + 1);
+
+  // Prefill from URL: ?customer= (new bill for a customer) or ?editBill= (edit a saved bill).
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const c = sp.get("customer");
+      if (c) setName(c);
+      const eb = sp.get("editBill");
+      if (eb) getBill(eb).then(loadBillIntoForm).catch(() => {});
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-dismiss the "rate only entered up to X" popup.
@@ -206,9 +241,7 @@ export function MandiBill({
     }
     setSaving(true);
     try {
-      const customer = await createCustomer(custName);
-      await createBill({
-        customer: customer.documentId,
+      const payload = {
         billName: custName,
         startDate,
         endDate,
@@ -220,8 +253,15 @@ export function MandiBill({
         totalAmount: calc.totalAmount,
         baqaya,
         entries: rows.map((r, i) => ({ date: toISO(dates[i]), ...r })),
-      });
-      setSavedMsg(`✓ ${custName} ka bill save ho gaya`);
+      };
+      if (editingBillId) {
+        await updateBill(editingBillId, payload);
+        setSavedMsg(`✓ ${custName} ka bill update ho gaya`);
+      } else {
+        const customer = await createCustomer(custName);
+        await createBill({ customer: customer.documentId, ...payload });
+        setSavedMsg(`✓ ${custName} ka bill save ho gaya`);
+      }
       setSavedKey((k) => k + 1); // refresh the saved-customers list
       resetBill(); // entries save ho gayin — form reset
     } catch (e) {
@@ -232,6 +272,7 @@ export function MandiBill({
   }
 
   function resetBill() {
+    setEditingBillId(null);
     setName("");
     setPrevBalance(0);
     setPaid(0);
@@ -505,7 +546,7 @@ export function MandiBill({
             disabled={saving}
             className="rounded-full bg-gradient-to-br from-gold-300 to-gold px-6 py-3 text-sm font-bold text-brand-950 shadow-[0_12px_28px_-10px_rgba(201,151,31,0.9)] disabled:opacity-60"
           >
-            {saving ? "Save ho raha hai..." : "💾 Save Karein"}
+            {saving ? "Ho raha hai..." : editingBillId ? "💾 Update Karein" : "💾 Save Karein"}
           </button>
         ) : (
           <Link
@@ -526,6 +567,7 @@ export function MandiBill({
       {/* ===== Saved customers (collapsible) — only when logged in ===== */}
       <SavedCustomers
         onPick={(nm) => {
+          resetBill();
           setName(nm);
           try {
             window.scrollTo({ top: 0, behavior: "smooth" });
@@ -533,6 +575,7 @@ export function MandiBill({
             /* ignore */
           }
         }}
+        onEditBill={(b) => loadBillIntoForm(b)}
         refreshKey={savedKey}
       />
 

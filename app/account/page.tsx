@@ -130,7 +130,10 @@ function BillsManager() {
         ➕ Naya Bill Banayein
       </Link>
 
-      <SavedCustomers onPick={(nm) => router.push(`/mandi-bill?customer=${encodeURIComponent(nm)}`)} />
+      <SavedCustomers
+        onPick={(nm) => router.push(`/mandi-bill?customer=${encodeURIComponent(nm)}`)}
+        onEditBill={(b) => router.push(`/mandi-bill?editBill=${encodeURIComponent(b.documentId)}`)}
+      />
     </div>
   );
 }

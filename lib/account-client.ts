@@ -81,6 +81,13 @@ export async function createCustomer(name: string): Promise<Customer> {
   });
 }
 
+export async function updateCustomer(documentId: string, name: string): Promise<Customer> {
+  return api<Customer>(`customers/${documentId}`, {
+    method: "PUT",
+    body: JSON.stringify({ data: { name } }),
+  });
+}
+
 export async function deleteCustomer(documentId: string): Promise<void> {
   await api(`customers/${documentId}`, { method: "DELETE" });
 }
@@ -106,6 +113,32 @@ export async function createBill(payload: {
 }): Promise<Bill> {
   return api<Bill>("bills", {
     method: "POST",
+    body: JSON.stringify({ data: payload }),
+  });
+}
+
+export async function getBill(documentId: string): Promise<Bill> {
+  return api<Bill>(`bills/${documentId}`);
+}
+
+export async function updateBill(
+  documentId: string,
+  payload: {
+    billName?: string;
+    startDate: string;
+    endDate: string;
+    commission: number;
+    prevBalance: number;
+    paid: number;
+    totalMun: number;
+    totalKg: number;
+    totalAmount: number;
+    baqaya: number;
+    entries: BillEntry[];
+  }
+): Promise<Bill> {
+  return api<Bill>(`bills/${documentId}`, {
+    method: "PUT",
     body: JSON.stringify({ data: payload }),
   });
 }

@@ -9,6 +9,7 @@ import {
   listBills,
   deleteBill,
   deleteCustomer,
+  updateCustomer,
   type Customer,
   type Bill,
 } from "@/lib/account-client";
@@ -21,10 +22,12 @@ import {
  */
 export function SavedCustomers({
   onPick,
+  onEditBill,
   refreshKey = 0,
   title = "Mere Customers",
 }: {
   onPick: (name: string) => void;
+  onEditBill?: (bill: Bill) => void;
   refreshKey?: number;
   title?: string;
 }) {
@@ -61,6 +64,19 @@ export function SavedCustomers({
     }
   }
 
+  async function renameCustomer(c: Customer) {
+    const next = window.prompt("Customer ka naya naam likhein:", c.name);
+    if (next === null) return;
+    const name = next.trim();
+    if (!name || name === c.name) return;
+    try {
+      await updateCustomer(c.documentId, name);
+      await load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Naam update nahi hua");
+    }
+  }
+
   if (!user) return null;
 
   return (
@@ -89,6 +105,8 @@ export function SavedCustomers({
               open={openId === c.documentId}
               onToggle={() => setOpenId((id) => (id === c.documentId ? null : c.documentId))}
               onPick={onPick}
+              onEditBill={onEditBill}
+              onRename={() => renameCustomer(c)}
               onDeleteCustomer={() => removeCustomer(c)}
               onChanged={load}
             />
@@ -104,6 +122,8 @@ function CustomerRow({
   open,
   onToggle,
   onPick,
+  onEditBill,
+  onRename,
   onDeleteCustomer,
   onChanged,
 }: {
@@ -111,6 +131,8 @@ function CustomerRow({
   open: boolean;
   onToggle: () => void;
   onPick: (name: string) => void;
+  onEditBill?: (bill: Bill) => void;
+  onRename: () => void;
   onDeleteCustomer: () => void;
   onChanged: () => void;
 }) {
@@ -159,8 +181,19 @@ function CustomerRow({
           </span>
           <span className={`ml-auto shrink-0 text-sub transition-transform ${open ? "rotate-180" : ""}`}>▾</span>
         </button>
-        <button onClick={onDeleteCustomer} className="mr-2 grid h-9 w-9 shrink-0 place-items-center rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30" aria-label="Customer delete">
-          🗑
+        <button
+          onClick={onRename}
+          className="flex shrink-0 items-center gap-1 rounded-full bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 dark:bg-brand-800/40 dark:text-brand-100"
+          aria-label="Customer ka naam edit"
+        >
+          ✏️ <span className="hidden sm:inline">Naam</span>
+        </button>
+        <button
+          onClick={onDeleteCustomer}
+          className="mx-2 flex shrink-0 items-center gap-1 rounded-full bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300"
+          aria-label="Customer delete"
+        >
+          🗑 <span className="hidden sm:inline">Delete</span>
         </button>
       </div>
 
@@ -191,7 +224,20 @@ function CustomerRow({
                     <button onClick={() => setView(b)} className="rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-sub hover:border-brand">
                       Dekhein
                     </button>
-                    <button onClick={() => removeBill(b)} className="grid h-8 w-8 place-items-center rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30" aria-label="Bill delete">
+                    {onEditBill && (
+                      <button
+                        onClick={() => onEditBill(b)}
+                        className="grid h-8 w-8 place-items-center rounded-full bg-brand-50 text-brand-700 hover:bg-brand-100 dark:bg-brand-800/40 dark:text-brand-100"
+                        aria-label="Bill edit"
+                      >
+                        ✏️
+                      </button>
+                    )}
+                    <button
+                      onClick={() => removeBill(b)}
+                      className="grid h-8 w-8 place-items-center rounded-full bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300"
+                      aria-label="Bill delete"
+                    >
                       🗑
                     </button>
                   </div>
