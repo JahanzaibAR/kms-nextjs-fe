@@ -3,6 +3,7 @@ import { Geist, Fraunces, Noto_Nastaliq_Urdu } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/components/LanguageProvider";
 import { SiteProvider } from "@/components/SiteProvider";
+import { AuthProvider } from "@/components/AuthProvider";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { BottomBar, WhatsAppFab } from "@/components/BottomBar";
@@ -87,13 +88,15 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="bg-base text-main flex min-h-full flex-col pb-16 lg:pb-0">
         <PWARegister />
         <SiteProvider site={site} cta={cta}>
-          <LanguageProvider>
-            <Header />
-            <main className="flex-1">{children}</main>
-            <Footer />
-            <BottomBar />
-            <WhatsAppFab />
-          </LanguageProvider>
+          <AuthProvider>
+            <LanguageProvider>
+              <Header />
+              <main className="flex-1">{children}</main>
+              <Footer />
+              <BottomBar />
+              <WhatsAppFab />
+            </LanguageProvider>
+          </AuthProvider>
         </SiteProvider>
       </body>
     </html>

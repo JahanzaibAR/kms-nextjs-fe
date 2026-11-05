@@ -1,19 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { KG_PER_MUN, rateForDate, type RateMap } from "@/lib/mandi";
+import Link from "next/link";
+import { rateForDate, type RateMap } from "@/lib/mandi";
 import { useSite } from "./SiteProvider";
+import { useAuth } from "./AuthProvider";
+import { BillSheet, computeBill, type BillRow } from "./BillSheet";
+import { createBill, createCustomer } from "@/lib/account-client";
 import { fmt } from "./ui";
 
-type Row = {
-  subahMun: number;
-  subahKg: number;
-  shaamMun: number;
-  shaamKg: number;
-  subahRate: number;
-  shaamRate: number;
-  comm: number;
-};
+type Row = BillRow;
 
 function addDays(d: Date, n: number) {
   const x = new Date(d);
@@ -23,23 +19,57 @@ function addDays(d: Date, n: number) {
 function fmtDate(d: Date) {
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
 }
+function toISO(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function diffDays(aISO: string, bISO: string) {
+  const a = new Date(aISO + "T00:00:00");
+  const b = new Date(bISO + "T00:00:00");
+  return Math.round((b.getTime() - a.getTime()) / 86400000);
+}
+function fmtDMY(iso: string) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  return `${d}-${m}-${y}`;
+}
 function round(n: number) {
   return Math.round(n);
 }
 
-const quickRanges = [5, 10, 15, 20, 25, 31];
-
 export function MandiBill({
   rateMap,
   defaultStartDate,
+  latestRateDate,
 }: {
   rateMap: RateMap;
   defaultStartDate: string;
+  latestRateDate: string;
 }) {
   const site = useSite();
+  const { user } = useAuth();
+
+  // Max selectable day = last day we have a mandi rate for. Initialised from the
+  // (stable) prop so prerender never touches `new Date()`; after mount we clamp
+  // it down to "today" on the client so future days can never be selected.
+  const [maxDate, setMaxDate] = useState(latestRateDate || defaultStartDate);
+  useEffect(() => {
+    const t = toISO(new Date());
+    const base = latestRateDate || t;
+    setMaxDate(base < t ? base : t);
+  }, [latestRateDate]);
+
   const [name, setName] = useState("");
+  const [session, setSession] = useState<"subah" | "shaam">("subah");
   const [startDate, setStartDate] = useState(defaultStartDate);
-  const [days, setDays] = useState(5);
+  const [endDate, setEndDate] = useState(() => {
+    const plus4 = toISO(addDays(new Date(defaultStartDate + "T00:00:00"), 4));
+    const cap = latestRateDate || defaultStartDate;
+    const e = plus4 > cap ? cap : plus4;
+    return e < defaultStartDate ? defaultStartDate : e;
+  });
   const [commission, setCommission] = useState(0);
   const [rows, setRows] = useState<Row[]>([]);
   const [prevBalance, setPrevBalance] = useState(0);
@@ -47,9 +77,73 @@ export function MandiBill({
   const [showBill, setShowBill] = useState(false);
   const [billLang, setBillLang] = useState<"roman" | "urdu">("roman");
   const [sharing, setSharing] = useState(false);
+  const [limitMsg, setLimitMsg] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
   const billRef = useRef<HTMLDivElement>(null);
 
-  // Build / resize rows whenever date or day-count changes, preserving existing entries by index.
+  const days = Math.max(1, diffDays(startDate, endDate) + 1);
+
+  // Prefill the customer name from ?customer= (used by "Naya Bill" on the account page).
+  useEffect(() => {
+    try {
+      const c = new URLSearchParams(window.location.search).get("customer");
+      if (c) setName(c);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  // Auto-dismiss the "rate only entered up to X" popup.
+  useEffect(() => {
+    if (!limitMsg) return;
+    const t = setTimeout(() => setLimitMsg(null), 2600);
+    return () => clearTimeout(t);
+  }, [limitMsg]);
+
+  // Auto-dismiss the save toast.
+  useEffect(() => {
+    if (!savedMsg) return;
+    const t = setTimeout(() => setSavedMsg(null), 2800);
+    return () => clearTimeout(t);
+  }, [savedMsg]);
+
+  function showLimit() {
+    setLimitMsg(`منڈی ریٹ ${fmtDMY(maxDate)} تک درج ہے`);
+  }
+
+  // ----- Start / End / days stay in sync; nothing can go past maxDate -----
+  function onStartChange(v: string) {
+    if (!v) return;
+    let s = v;
+    if (s > maxDate) {
+      s = maxDate;
+      showLimit();
+    }
+    setStartDate(s);
+    if (endDate < s) setEndDate(s);
+  }
+  function onEndChange(v: string) {
+    if (!v) return;
+    let e = v;
+    if (e > maxDate) {
+      e = maxDate;
+      showLimit();
+    }
+    if (e < startDate) e = startDate;
+    setEndDate(e);
+  }
+  function setDaysCount(n: number) {
+    const target = Math.max(1, Math.floor(n || 1));
+    let newEnd = toISO(addDays(new Date(startDate + "T00:00:00"), target - 1));
+    if (newEnd > maxDate) {
+      newEnd = maxDate;
+      showLimit();
+    }
+    setEndDate(newEnd < startDate ? startDate : newEnd);
+  }
+
+  // Build / resize rows whenever the range changes, preserving existing entries by index.
   useEffect(() => {
     const base = new Date(startDate + "T00:00:00");
     setRows((prev) => {
@@ -75,10 +169,9 @@ export function MandiBill({
       return next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate, days]);
+  }, [startDate, endDate]);
 
-  // Apply global commission to rows that still match the previous global value is complex;
-  // instead expose a button-free behavior: changing commission updates all rows.
+  // Changing the global commission updates all rows.
   useEffect(() => {
     setRows((prev) => prev.map((r) => ({ ...r, comm: commission })));
   }, [commission]);
@@ -86,41 +179,63 @@ export function MandiBill({
   const dates = useMemo(() => {
     const base = new Date(startDate + "T00:00:00");
     return Array.from({ length: days }, (_, i) => addDays(base, i));
-  }, [startDate, days]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate]);
 
   function updateRow(i: number, patch: Partial<Row>) {
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
 
-  // Calculations
-  const calc = useMemo(() => {
-    let totalMun = 0;
-    let totalAmount = 0;
-    const perRow = rows.map((r) => {
-      const subahMun = (r.subahMun || 0) + (r.subahKg || 0) / KG_PER_MUN;
-      const shaamMun = (r.shaamMun || 0) + (r.shaamKg || 0) / KG_PER_MUN;
-      const subahAmt = subahMun * ((r.subahRate || 0) + (r.comm || 0));
-      const shaamAmt = shaamMun * ((r.shaamRate || 0) + (r.comm || 0));
-      const rowMun = subahMun + shaamMun;
-      const rowAmt = subahAmt + shaamAmt;
-      totalMun += rowMun;
-      totalAmount += rowAmt;
-      return { rowMun, rowAmt };
-    });
-    const mun = Math.floor(totalMun);
-    const kg = round((totalMun - mun) * KG_PER_MUN);
-    return { perRow, totalMun, totalAmount: round(totalAmount), mun, kg };
-  }, [rows]);
+  // Calculations (shared with saved-bill previews via computeBill)
+  const calc = useMemo(() => computeBill(rows), [rows]);
 
   const baqaya = round(calc.totalAmount + (prevBalance || 0) - (paid || 0));
+
+  async function saveBill() {
+    if (!user) return;
+    const custName = name.trim();
+    if (!custName) {
+      setSavedMsg("Pehle customer ka naam likhein");
+      return;
+    }
+    if (calc.totalAmount <= 0) {
+      setSavedMsg("Pehle doodh ki miqdaar likhein");
+      return;
+    }
+    setSaving(true);
+    try {
+      const customer = await createCustomer(custName);
+      await createBill({
+        customer: customer.documentId,
+        billName: custName,
+        startDate,
+        endDate,
+        commission,
+        prevBalance,
+        paid,
+        totalMun: calc.mun,
+        totalKg: calc.kg,
+        totalAmount: calc.totalAmount,
+        baqaya,
+        entries: rows.map((r, i) => ({ date: toISO(dates[i]), ...r })),
+      });
+      setSavedMsg(`✓ ${custName} ka bill save ho gaya`);
+    } catch (e) {
+      setSavedMsg(e instanceof Error ? e.message : "Save nahi hua");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   function resetBill() {
     setName("");
     setPrevBalance(0);
     setPaid(0);
     setCommission(0);
-    setDays(5);
+    setSession("subah");
     setStartDate(defaultStartDate);
+    const plus4 = toISO(addDays(new Date(defaultStartDate + "T00:00:00"), 4));
+    setEndDate(plus4 > maxDate ? maxDate : plus4);
     setRows([]);
   }
 
@@ -178,7 +293,6 @@ export function MandiBill({
           text: name ? `${name} ka doodh ka bill` : "Doodh ka mandi bill",
         });
       } else {
-        // Desktop / unsupported: download the image, then open WhatsApp with the text summary.
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -188,7 +302,6 @@ export function MandiBill({
         sendWhatsAppText();
       }
     } catch {
-      // Any failure -> fall back to the text bill so the user is never stuck.
       sendWhatsAppText();
     } finally {
       setSharing(false);
@@ -198,7 +311,7 @@ export function MandiBill({
   return (
     <div>
       {/* ===== Inputs ===== */}
-      <div className="grid gap-4 rounded-3xl border border-line bg-surface p-5 shadow-soft sm:p-6 no-print">
+      <div className="grid gap-4 rounded-3xl border border-line bg-surface p-4 shadow-soft sm:p-6 no-print">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Dukandaar / Bhenswala ka Naam" urdu="دکاندار یا بھینس والے کا نام">
             <input
@@ -209,59 +322,91 @@ export function MandiBill({
             />
           </Field>
           <Field label="Shuru Tareekh" urdu="شروع تاریخ">
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bill-input" />
+            <input
+              type="date"
+              value={startDate}
+              max={maxDate}
+              onChange={(e) => onStartChange(e.target.value)}
+              className="bill-input"
+            />
+          </Field>
+          <Field label="Aakhri Tareekh" urdu="آخری تاریخ">
+            <input
+              type="date"
+              value={endDate}
+              min={startDate}
+              max={maxDate}
+              onChange={(e) => onEndChange(e.target.value)}
+              className="bill-input"
+            />
           </Field>
           <Field label="Kiraya Commission" urdu="کرایہ کمیشن">
             <input
               type="number"
+              inputMode="numeric"
               value={commission || ""}
               onChange={(e) => setCommission(Number(e.target.value) || 0)}
               placeholder="0"
               className="bill-input"
             />
           </Field>
-          <Field label="Kitne Din" urdu="کتنے دن">
-            <div className="flex items-center gap-2">
-              <button onClick={() => setDays((d) => Math.max(1, d - 1))} className="bill-stepper">−</button>
-              <input
-                type="number"
-                value={days}
-                min={1}
-                max={31}
-                onChange={(e) => setDays(Math.min(31, Math.max(1, Number(e.target.value) || 1)))}
-                className="bill-input text-center"
-              />
-              <button onClick={() => setDays((d) => Math.min(31, d + 1))} className="bill-stepper">+</button>
-            </div>
-          </Field>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-sub">Quick:</span>
-          {quickRanges.map((q) => (
-            <button
-              key={q}
-              onClick={() => setDays(q)}
-              className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
-                days === q ? "border-brand bg-brand text-white" : "border-line text-sub hover:border-brand"
-              }`}
-            >
-              {q} din
-            </button>
-          ))}
+        {/* Days counter — stays in sync with the two dates above */}
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs font-medium text-sub">
+            Kitne Din <span className="urdu">کتنے دن</span>
+          </span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setDaysCount(days - 1)} className="bill-stepper" aria-label="Kam karein">−</button>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={days}
+              min={1}
+              onChange={(e) => setDaysCount(Number(e.target.value) || 1)}
+              className="bill-input w-16 text-center"
+            />
+            <button onClick={() => setDaysCount(days + 1)} className="bill-stepper" aria-label="Barhayein">+</button>
+          </div>
+          <span className="text-xs text-sub tabular-nums">
+            {dates.length ? `${fmtDate(dates[0])} – ${fmtDate(dates[dates.length - 1])}` : ""}
+          </span>
         </div>
       </div>
 
-      {/* ===== Table ===== */}
-      <div className="mt-5 overflow-x-auto scroll-slim rounded-3xl border border-line bg-surface shadow-soft no-print">
-        <table className="w-full min-w-[720px] text-sm">
+      {/* ===== Subah / Shaam toggle ===== */}
+      <div className="mt-5 flex items-center justify-between gap-3 no-print">
+        <div className="inline-flex rounded-full border border-line bg-surface p-1 text-sm font-semibold shadow-soft">
+          <button
+            onClick={() => setSession("subah")}
+            className={`rounded-full px-4 py-1.5 transition-colors sm:px-5 ${
+              session === "subah" ? "bg-brand text-white" : "text-sub hover:text-brand-700"
+            }`}
+          >
+            ☀ Subah <span className="urdu">صبح</span>
+          </button>
+          <button
+            onClick={() => setSession("shaam")}
+            className={`rounded-full px-4 py-1.5 transition-colors sm:px-5 ${
+              session === "shaam" ? "bg-brand text-white" : "text-sub hover:text-brand-700"
+            }`}
+          >
+            🌙 Shaam <span className="urdu">شام</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ===== Table (compact, fits mobile — no horizontal scroll) ===== */}
+      <div className="mt-3 overflow-hidden rounded-3xl border border-line bg-surface shadow-soft no-print">
+        <table className="w-full table-fixed text-sm">
           <thead className="bg-brand-50 text-main dark:bg-brand-800/50">
             <tr>
-              <th className="px-3 py-3 text-left font-semibold">Din</th>
-              <th className="px-2 py-3 text-center font-semibold" colSpan={2}>☀ Subah (Mun / Kg)</th>
-              <th className="px-2 py-3 text-center font-semibold" colSpan={2}>🌙 Shaam (Mun / Kg)</th>
-              <th className="px-2 py-3 text-center font-semibold">Rate+Comm</th>
-              <th className="px-3 py-3 text-right font-semibold">Raqam</th>
+              <th className="w-[24%] px-2 py-3 text-left font-semibold">Din</th>
+              <th className="px-1 py-3 text-center font-semibold">Mun</th>
+              <th className="px-1 py-3 text-center font-semibold">Kg</th>
+              <th className="px-1 py-3 text-center font-semibold">Rate</th>
+              <th className="w-[26%] px-2 py-3 text-right font-semibold">Raqam</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[color:var(--line)]">
@@ -269,21 +414,42 @@ export function MandiBill({
               const r = rows[i];
               if (!r) return null;
               const amt = calc.perRow[i]?.rowAmt ?? 0;
-              const noRate = (r.subahRate === 0 && (r.subahMun || r.subahKg)) || (r.shaamRate === 0 && (r.shaamMun || r.shaamKg));
+              const mun = session === "subah" ? r.subahMun : r.shaamMun;
+              const kg = session === "subah" ? r.subahKg : r.shaamKg;
+              const rate = session === "subah" ? r.subahRate : r.shaamRate;
+              const missingRate = rate === 0 && (mun || kg);
+              const noRate =
+                (r.subahRate === 0 && (r.subahMun || r.subahKg)) ||
+                (r.shaamRate === 0 && (r.shaamMun || r.shaamKg));
               return (
                 <tr key={i} className="align-middle">
-                  <td className="whitespace-nowrap px-3 py-2 font-medium text-main">{fmtDate(d)}</td>
-                  <td className="px-1 py-2"><NumCell value={r.subahMun} onChange={(v) => updateRow(i, { subahMun: v })} placeholder="mun" /></td>
-                  <td className="px-1 py-2"><NumCell value={r.subahKg} onChange={(v) => updateRow(i, { subahKg: v })} placeholder="kg" /></td>
-                  <td className="px-1 py-2"><NumCell value={r.shaamMun} onChange={(v) => updateRow(i, { shaamMun: v })} placeholder="mun" /></td>
-                  <td className="px-1 py-2"><NumCell value={r.shaamKg} onChange={(v) => updateRow(i, { shaamKg: v })} placeholder="kg" /></td>
+                  <td className="whitespace-nowrap px-2 py-2 font-medium text-main">{fmtDate(d)}</td>
                   <td className="px-1 py-2">
-                    <div className="flex flex-col gap-1">
-                      <RateCell value={r.subahRate} onChange={(v) => updateRow(i, { subahRate: v })} missing={r.subahRate === 0} tag="S" />
-                      <RateCell value={r.shaamRate} onChange={(v) => updateRow(i, { shaamRate: v })} missing={r.shaamRate === 0} tag="Sh" />
-                    </div>
+                    <NumCell
+                      value={mun}
+                      onChange={(v) => updateRow(i, session === "subah" ? { subahMun: v } : { shaamMun: v })}
+                      placeholder="mun"
+                    />
                   </td>
-                  <td className={`whitespace-nowrap px-3 py-2 text-right font-semibold tabular-nums ${noRate ? "text-red-500" : "text-brand-700 dark:text-brand-100"}`}>
+                  <td className="px-1 py-2">
+                    <NumCell
+                      value={kg}
+                      onChange={(v) => updateRow(i, session === "subah" ? { subahKg: v } : { shaamKg: v })}
+                      placeholder="kg"
+                    />
+                  </td>
+                  <td className="px-1 py-2">
+                    <RateCell
+                      value={rate}
+                      onChange={(v) => updateRow(i, session === "subah" ? { subahRate: v } : { shaamRate: v })}
+                      missing={!!missingRate}
+                    />
+                  </td>
+                  <td
+                    className={`whitespace-nowrap px-2 py-2 text-right font-semibold tabular-nums ${
+                      noRate ? "text-red-500" : "text-brand-700 dark:text-brand-100"
+                    }`}
+                  >
                     Rs {fmt(round(amt))}
                   </td>
                 </tr>
@@ -294,7 +460,8 @@ export function MandiBill({
       </div>
 
       <p className="mt-3 text-xs text-sub no-print">
-        ⚠ Rate <span className="font-semibold text-red-500">0</span> ho to laal khaane par tap kar ke mandi rate likhein. Net Rate = Mandi Rate + Commission.
+        ⚠ Rate <span className="font-semibold text-red-500">0</span> ho to laal khaane par tap kar ke mandi rate likhein.
+        Net Rate = Mandi Rate + Commission. Subah/Shaam alag alag toggle se likhein.
       </p>
 
       {/* ===== Totals + Balance ===== */}
@@ -303,13 +470,13 @@ export function MandiBill({
           <SummaryCard label="Kul Doodh" value={`${calc.mun} Mun ${calc.kg} Kg`} />
           <SummaryCard label="Kul Raqam" value={`Rs ${fmt(calc.totalAmount)}`} accent />
         </div>
-        <div className="rounded-3xl border border-line bg-surface p-5 shadow-soft">
+        <div className="rounded-3xl border border-line bg-surface p-4 shadow-soft sm:p-5">
           <div className="grid gap-3 sm:grid-cols-3">
             <Field label="Pichla Baqaya" urdu="پچھلا بقایا">
-              <input type="number" value={prevBalance || ""} onChange={(e) => setPrevBalance(Number(e.target.value) || 0)} placeholder="0" className="bill-input" />
+              <input type="number" inputMode="numeric" value={prevBalance || ""} onChange={(e) => setPrevBalance(Number(e.target.value) || 0)} placeholder="0" className="bill-input" />
             </Field>
             <Field label="Amount Paid" urdu="ادا شدہ رقم">
-              <input type="number" value={paid || ""} onChange={(e) => setPaid(Number(e.target.value) || 0)} placeholder="0" className="bill-input" />
+              <input type="number" inputMode="numeric" value={paid || ""} onChange={(e) => setPaid(Number(e.target.value) || 0)} placeholder="0" className="bill-input" />
             </Field>
             <Field label="Baqaya" urdu="بقایا">
               <div className="grid h-11 place-items-center rounded-xl bg-brand-50 font-display text-lg font-bold text-brand-700 dark:bg-brand-800/40 dark:text-brand-100">
@@ -328,6 +495,22 @@ export function MandiBill({
         <button onClick={() => setShowBill(true)} className="rounded-full bg-[#25D366] px-5 py-3 text-sm font-semibold text-white">
           💬 WhatsApp Bhejein
         </button>
+        {user ? (
+          <button
+            onClick={saveBill}
+            disabled={saving}
+            className="rounded-full bg-gradient-to-br from-gold-400 to-gold px-5 py-3 text-sm font-semibold text-brand-950 shadow-[0_12px_28px_-10px_rgba(201,151,31,0.8)] disabled:opacity-60"
+          >
+            {saving ? "..." : "💾 Save"}
+          </button>
+        ) : (
+          <Link
+            href="/account"
+            className="rounded-full border border-dashed border-gold-400 bg-gold-100/40 px-5 py-3 text-sm font-semibold text-gold-700 hover:border-gold"
+          >
+            🔐 Login kar ke save karein
+          </Link>
+        )}
         <button onClick={() => window.print()} className="rounded-full border border-line bg-surface px-5 py-3 text-sm font-semibold text-main hover:border-brand">
           🖨 PDF / Print
         </button>
@@ -335,6 +518,24 @@ export function MandiBill({
           + Naya Bill
         </button>
       </div>
+
+      {/* ===== Future-date / rate-limit popup ===== */}
+      {limitMsg && (
+        <div className="fixed inset-x-0 bottom-24 z-[70] flex justify-center px-4 no-print">
+          <div className="urdu rounded-2xl bg-ink px-6 py-4 text-center text-lg text-cream shadow-card" dir="rtl">
+            {limitMsg}
+          </div>
+        </div>
+      )}
+
+      {/* ===== Save toast ===== */}
+      {savedMsg && (
+        <div className="fixed inset-x-0 bottom-24 z-[70] flex justify-center px-4 no-print">
+          <div className="rounded-2xl bg-brand px-6 py-3 text-center text-sm font-semibold text-white shadow-card">
+            {savedMsg}
+          </div>
+        </div>
+      )}
 
       {/* ===== Bill preview (modal + print-area) ===== */}
       {showBill && (
@@ -407,7 +608,7 @@ export function MandiBill({
 function Field({ label, urdu, children }: { label: string; urdu?: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1.5 flex items-center justify-between text-xs font-medium text-sub">
+      <span className="mb-1.5 flex items-center justify-between gap-2 text-xs font-medium text-sub">
         <span>{label}</span>
         {urdu && <span className="urdu">{urdu}</span>}
       </span>
@@ -424,123 +625,32 @@ function NumCell({ value, onChange, placeholder }: { value: number; onChange: (v
       value={value || ""}
       onChange={(e) => onChange(Number(e.target.value) || 0)}
       placeholder={placeholder}
-      className="h-10 w-16 rounded-lg border border-line bg-[color:var(--bg)] px-2 text-center text-sm text-main outline-none focus:border-brand-400"
+      className="h-10 w-full min-w-0 rounded-lg border border-line bg-[color:var(--bg)] px-1.5 text-center text-sm text-main outline-none focus:border-brand-400"
     />
   );
 }
 
-function RateCell({ value, onChange, missing, tag }: { value: number; onChange: (v: number) => void; missing: boolean; tag: string }) {
+function RateCell({ value, onChange, missing }: { value: number; onChange: (v: number) => void; missing: boolean }) {
   return (
-    <div className="flex items-center gap-1">
-      <span className="w-5 text-[0.65rem] font-semibold text-sub">{tag}</span>
-      <input
-        type="number"
-        value={value || ""}
-        onChange={(e) => onChange(Number(e.target.value) || 0)}
-        placeholder="?"
-        className={`h-8 w-20 rounded-lg border px-2 text-center text-xs tabular-nums outline-none ${
-          missing ? "border-red-400 bg-red-50 text-red-600 placeholder:text-red-400 dark:bg-red-950/30" : "border-line bg-[color:var(--bg)] text-sub"
-        }`}
-      />
-    </div>
+    <input
+      type="number"
+      inputMode="numeric"
+      value={value || ""}
+      onChange={(e) => onChange(Number(e.target.value) || 0)}
+      placeholder="?"
+      className={`h-10 w-full min-w-0 rounded-lg border px-1.5 text-center text-sm tabular-nums outline-none ${
+        missing ? "border-red-400 bg-red-50 text-red-600 placeholder:text-red-400 dark:bg-red-950/30" : "border-line bg-[color:var(--bg)] text-sub focus:border-brand-400"
+      }`}
+    />
   );
 }
 
 function SummaryCard({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className={`rounded-3xl border border-line p-5 shadow-soft ${accent ? "bg-gradient-to-br from-brand-600 to-brand-800 text-white" : "bg-surface"}`}>
+    <div className={`rounded-3xl border border-line p-4 shadow-soft sm:p-5 ${accent ? "bg-gradient-to-br from-brand-600 to-brand-800 text-white" : "bg-surface"}`}>
       <div className={`text-xs font-semibold uppercase tracking-wider ${accent ? "text-brand-100" : "text-gold-600"}`}>{label}</div>
       <div className={`mt-1 font-display text-2xl font-bold ${accent ? "text-white" : "text-main"}`}>{value}</div>
     </div>
   );
 }
 
-function BillSheet({
-  lang,
-  name,
-  dates,
-  rows,
-  perRow,
-  totals,
-  prevBalance,
-  paid,
-  baqaya,
-}: {
-  lang: "roman" | "urdu";
-  name: string;
-  dates: Date[];
-  rows: Row[];
-  perRow: { rowMun: number; rowAmt: number }[];
-  totals: { mun: number; kg: number; totalAmount: number };
-  prevBalance: number;
-  paid: number;
-  baqaya: number;
-}) {
-  const site = useSite();
-  const ur = lang === "urdu";
-  return (
-    <div className={`rounded-2xl bg-white p-6 text-zinc-900 shadow-2xl ${ur ? "urdu text-right" : ""}`} dir={ur ? "rtl" : "ltr"}>
-      <div className="flex items-center justify-between border-b-2 border-brand pb-3">
-        <div>
-          <div className="font-display text-xl font-bold text-brand-700">{site.name}</div>
-          <div className="text-xs text-zinc-500">Since {site.since} · {site.phone}</div>
-        </div>
-        <div className="text-2xl">🥛</div>
-      </div>
-
-      <div className="mt-3 flex items-center justify-between text-sm">
-        <span>{ur ? "نام" : "Naam"}: <strong>{name || "—"}</strong></span>
-        <span className="text-zinc-500">
-          {dates.length ? `${fmtDate(dates[0])}${dates.length > 1 ? ` – ${fmtDate(dates[dates.length - 1])}` : ""}` : ""}
-        </span>
-      </div>
-
-      <table className="mt-3 w-full text-xs" dir="ltr">
-        <thead>
-          <tr className="border-b border-zinc-200 text-zinc-500">
-            <th className="py-1.5 text-left">Din</th>
-            <th className="py-1.5 text-right">Subah</th>
-            <th className="py-1.5 text-right">Shaam</th>
-            <th className="py-1.5 text-right">Raqam</th>
-          </tr>
-        </thead>
-        <tbody>
-          {dates.map((d, i) => {
-            const r = rows[i];
-            const amt = perRow[i]?.rowAmt ?? 0;
-            if (!r || amt <= 0) return null;
-            return (
-              <tr key={i} className="border-b border-zinc-100">
-                <td className="py-1.5">{fmtDate(d)}</td>
-                <td className="py-1.5 text-right">{r.subahMun || r.subahKg ? `${r.subahMun}m ${r.subahKg}kg` : "—"}</td>
-                <td className="py-1.5 text-right">{r.shaamMun || r.shaamKg ? `${r.shaamMun}m ${r.shaamKg}kg` : "—"}</td>
-                <td className="py-1.5 text-right font-semibold">Rs {fmt(round(amt))}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-
-      <div className="mt-3 space-y-1 border-t border-zinc-200 pt-3 text-sm" dir="ltr">
-        <Line l={ur ? "کل دودھ" : "Kul Doodh"} r={`${totals.mun} Mun ${totals.kg} Kg`} />
-        <Line l={ur ? "کل رقم" : "Kul Raqam"} r={`Rs ${fmt(totals.totalAmount)}`} bold />
-        {!!prevBalance && <Line l={ur ? "پچھلا بقایا" : "Pichla Baqaya"} r={`Rs ${fmt(prevBalance)}`} />}
-        {!!paid && <Line l={ur ? "ادا شدہ" : "Amount Paid"} r={`Rs ${fmt(paid)}`} />}
-        {(!!prevBalance || !!paid) && <Line l={ur ? "بقایا" : "Baqaya"} r={`Rs ${fmt(baqaya)}`} bold />}
-      </div>
-
-      <div className="mt-4 text-center text-[0.7rem] text-zinc-400">
-        {ur ? "شکریہ — کراچی ملک سپلائر" : "Shukriya — Karachi Milk Supplier"}
-      </div>
-    </div>
-  );
-}
-
-function Line({ l, r, bold }: { l: string; r: string; bold?: boolean }) {
-  return (
-    <div className={`flex items-center justify-between ${bold ? "text-base font-bold text-brand-700" : "text-zinc-600"}`}>
-      <span>{l}</span>
-      <span className="tabular-nums">{r}</span>
-    </div>
-  );
-}

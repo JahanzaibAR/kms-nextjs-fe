@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { nav } from "@/lib/nav";
 import { useLang } from "./LanguageProvider";
 import { useSite } from "./SiteProvider";
+import { useAuth } from "./AuthProvider";
 import { Logo } from "./Logo";
 
 export function Header() {
@@ -14,6 +15,7 @@ export function Header() {
   const pathname = usePathname();
   const { lang, setLang } = useLang();
   const site = useSite();
+  const { user } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -95,6 +97,18 @@ export function Header() {
             </svg>
             {lang === "ur" ? <span className="urdu">آرڈر</span> : "Order"}
           </a>
+
+          {/* Account / Bills */}
+          <Link
+            href="/account"
+            className="flex h-10 items-center gap-1.5 rounded-full border border-line px-3 text-sm font-semibold text-sub transition-colors hover:border-brand hover:text-brand-700"
+            title={user ? "Mere Bills" : "Login"}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current" aria-hidden>
+              <path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4.42 0-8 2.69-8 6v2h16v-2c0-3.31-3.58-6-8-6z" />
+            </svg>
+            <span className="hidden sm:inline">{user ? user.name || "Bills" : "Login"}</span>
+          </Link>
 
           {/* Mobile menu button */}
           <button

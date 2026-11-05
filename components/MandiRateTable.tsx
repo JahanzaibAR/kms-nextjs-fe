@@ -54,19 +54,19 @@ export function MandiRateTable({
             <table className="w-full text-sm">
               <thead className="sticky top-0 z-10 bg-brand-50 text-main dark:bg-brand-800/60">
                 <tr>
-                  <th className="px-5 py-3 text-left font-semibold">Tareekh</th>
-                  <th className="px-5 py-3 text-right font-semibold">☀ Subah</th>
-                  <th className="px-5 py-3 text-right font-semibold">🌙 Shaam</th>
+                  <th className="px-3 py-3 text-left font-semibold sm:px-5">Tareekh</th>
+                  <th className="px-3 py-3 text-right font-semibold sm:px-5">☀ Subah</th>
+                  <th className="px-3 py-3 text-right font-semibold sm:px-5">🌙 Shaam</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[color:var(--line)]">
                 {month.days.map((d) => (
                   <tr key={d.day} className="transition-colors hover:bg-brand-50/50 dark:hover:bg-brand-800/20">
-                    <td className="px-5 py-2.5 font-medium text-main">
+                    <td className="px-3 py-2.5 font-medium text-main sm:px-5">
                       {d.day} {month.label.split(" ")[0].slice(0, 3)}
                     </td>
-                    <td className="px-5 py-2.5 text-right tabular-nums text-sub">Rs {fmt(d.subah)}</td>
-                    <td className="px-5 py-2.5 text-right tabular-nums text-sub">Rs {fmt(d.shaam)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-sub sm:px-5">Rs {fmt(d.subah)}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-sub sm:px-5">Rs {fmt(d.shaam)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -117,15 +117,15 @@ export function MandiRateTable({
         <div className="border-b border-line px-5 py-3 font-display text-sm font-semibold text-main">
           Mahana Average · سب مہینے
         </div>
-        <div className="overflow-x-auto scroll-slim">
+        <div>
           <table className="w-full text-sm">
             <thead className="bg-surface-2/60">
               <tr>
-                <th className="px-5 py-3 text-left font-semibold text-main">Mahina</th>
-                <th className="px-5 py-3 text-right font-semibold text-main">Subah</th>
-                <th className="px-5 py-3 text-right font-semibold text-main">Shaam</th>
-                <th className="px-5 py-3 text-right font-semibold text-main">Kul</th>
-                <th className="px-5 py-3 text-right font-semibold text-main">Kam / Zyada</th>
+                <th className="px-2.5 py-3 text-left font-semibold text-main sm:px-5">Mahina</th>
+                <th className="px-2.5 py-3 text-right font-semibold text-main sm:px-5">Subah</th>
+                <th className="px-2.5 py-3 text-right font-semibold text-main sm:px-5">Shaam</th>
+                <th className="px-2.5 py-3 text-right font-semibold text-main sm:px-5">Kul</th>
+                <th className="hidden px-2.5 py-3 text-right font-semibold text-main sm:table-cell sm:px-5">Kam / Zyada</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[color:var(--line)]">
@@ -133,11 +133,11 @@ export function MandiRateTable({
                 const a = monthAverage(m);
                 return (
                   <tr key={m.key} className="hover:bg-brand-50/40 dark:hover:bg-brand-800/20">
-                    <td className="px-5 py-3 font-medium text-main">{m.label} <span className="text-xs text-sub">({a.days} din)</span></td>
-                    <td className="px-5 py-3 text-right tabular-nums text-sub">{fmt(a.subah)}</td>
-                    <td className="px-5 py-3 text-right tabular-nums text-sub">{fmt(a.shaam)}</td>
-                    <td className="px-5 py-3 text-right font-semibold tabular-nums text-brand-700 dark:text-brand-100">{fmt(a.kul)}</td>
-                    <td className="px-5 py-3 text-right text-xs tabular-nums text-sub">Rs {fmt(a.min)} – {fmt(a.max)}</td>
+                    <td className="px-2.5 py-3 font-medium text-main sm:px-5">{m.label} <span className="text-xs text-sub">({a.days} din)</span></td>
+                    <td className="px-2.5 py-3 text-right tabular-nums text-sub sm:px-5">{fmt(a.subah)}</td>
+                    <td className="px-2.5 py-3 text-right tabular-nums text-sub sm:px-5">{fmt(a.shaam)}</td>
+                    <td className="px-2.5 py-3 text-right font-semibold tabular-nums text-brand-700 dark:text-brand-100 sm:px-5">{fmt(a.kul)}</td>
+                    <td className="hidden px-2.5 py-3 text-right text-xs tabular-nums text-sub sm:table-cell sm:px-5">Rs {fmt(a.min)} – {fmt(a.max)}</td>
                   </tr>
                 );
               })}

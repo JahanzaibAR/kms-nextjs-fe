@@ -15,7 +15,11 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function MandiBillPage() {
   const [page, rates] = await Promise.all([getMandiBillPageContent(), getMandiRates()]);
   const { rateMap, latestMonthKey } = buildMandiData(rates);
-  const defaultStartDate = latestMonthKey ? `${latestMonthKey}-01` : new Date().toISOString().slice(0, 10);
+  const defaultStartDate = latestMonthKey
+    ? `${latestMonthKey}-01`
+    : new Date().toISOString().slice(0, 10);
+  // Rates are sorted ascending, so the last row is the latest day we have a rate for.
+  const latestRateDate = rates.length ? rates[rates.length - 1].date : defaultStartDate;
 
   return (
     <>
@@ -33,7 +37,7 @@ export default async function MandiBillPage() {
       </section>
 
       <Container className="py-10">
-        <MandiBill rateMap={rateMap} defaultStartDate={defaultStartDate} />
+        <MandiBill rateMap={rateMap} defaultStartDate={defaultStartDate} latestRateDate={latestRateDate} />
       </Container>
 
       {/* How it works */}
