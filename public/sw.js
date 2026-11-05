@@ -1,5 +1,5 @@
 // Karachi Milk Supplier — service worker (offline app shell + runtime cache)
-const CACHE = "kms-cache-v1";
+const CACHE = "kms-cache-v2";
 const APP_SHELL = ["/", "/about", "/mandi-rate", "/mandi-bill"];
 
 self.addEventListener("install", (event) => {
